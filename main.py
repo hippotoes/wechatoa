@@ -88,7 +88,7 @@ def deploy_to_github(filename, content_html):
     try:
         subprocess.run(["git", "add", target_path], check=True)
         subprocess.run(["git", "commit", "-m", f"Deploy article: {filename}"], check=True)
-        subprocess.run(["git", "push"], check=True)
+        subprocess.run(["git", "push", "origin", "HEAD"], check=True)
         print(f"成功！文章已发布。如果你的 GitHub Pages 设置在 docs 目录，访问地址通常为: https://<your-username>.github.io/<repo-name>/{os.path.basename(filename)}")
     except Exception as e:
         print(f"Git 发布失败: {e}")
@@ -157,22 +157,25 @@ def main():
     selected_angle = input("请简述选定的【切入点/心理学概念】: ")
 
     # Stage 2
-    print(f"\n等待 {RATE_LIMIT_DELAY}s 以适应 API 限制...")
-    time.sleep(RATE_LIMIT_DELAY)
+    if provider_choice != "2":
+        print(f"\n等待 {RATE_LIMIT_DELAY}s 以适应 API 限制...")
+        time.sleep(RATE_LIMIT_DELAY)
     print(f"[2/4] 正在生成大纲...")
     stage2_prompt = prompts["Stage 2"].format(title=selected_title, angle=selected_angle)
     outline = llm.generate(stage2_prompt)
 
     # Stage 3
-    print(f"\n等待 {RATE_LIMIT_DELAY}s 以适应 API 限制...")
-    time.sleep(RATE_LIMIT_DELAY)
+    if provider_choice != "2":
+        print(f"\n等待 {RATE_LIMIT_DELAY}s 以适应 API 限制...")
+        time.sleep(RATE_LIMIT_DELAY)
     print(f"[3/4] 正在撰写正文...")
     stage3_prompt = prompts["Stage 3"].format(outline=outline)
     content = llm.generate(stage3_prompt)
 
     # Stage 4
-    print(f"\n等待 {RATE_LIMIT_DELAY}s 以适应 API 限制...")
-    time.sleep(RATE_LIMIT_DELAY)
+    if provider_choice != "2":
+        print(f"\n等待 {RATE_LIMIT_DELAY}s 以适应 API 限制...")
+        time.sleep(RATE_LIMIT_DELAY)
     print(f"[4/4] 正在进行后期润色...")
     stage4_prompt = prompts["Stage 4"].format(content=content)
     final_article_md = llm.generate(stage4_prompt)
