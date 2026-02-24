@@ -1,0 +1,11 @@
+{
+    "default_provider": "2",
+    "gemini": {
+        "model": "gemini-2.0-flash"
+    },
+    "deepseek": {
+        "model": "deepseek-reasoner"
+    },
+    "output_dir": ".",
+    "gh_pages_branch": "gh-pages"
+}
