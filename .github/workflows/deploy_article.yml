@@ -43,33 +43,11 @@ jobs:
           WECHAT_APP_SECRET: ${{ secrets.WECHAT_APP_SECRET }}
           WECHAT_THUMB_MEDIA_ID: ${{ secrets.WECHAT_THUMB_MEDIA_ID }}
         run: |
-          python -c "
-          import os, json, markdown, datetime, re
-          from llm_client import DeepSeekClient
-          from main import PromptManager, deploy_to_github
-          
-          title = '${{ github.event.inputs.title }}'
-          angle = '${{ github.event.inputs.angle }}'
-          input_date = '${{ github.event.inputs.date }}'
-          style_name = '${{ github.event.inputs.style }}'
-          
-          pm = PromptManager()
-          prompts = pm.prompts[style_name]
-          llm = DeepSeekClient(os.getenv('DEEPSEEK_API_KEY'), model='deepseek-reasoner')
-          
-          print('[1/3] Generating Outline...')
-          outline = llm.generate(prompts['Stage 2'].format(title=title, angle=angle))
-          print('[2/3] Generating Content...')
-          content = llm.generate(prompts['Stage 3'].format(outline=outline))
-          print('[3/3] Reviewing...')
-          final_md = llm.generate(prompts['Stage 4'].format(content=content))
-          
-          html = markdown.markdown(final_md, extensions=['extra'])
-          date_str = input_date if input_date else datetime.datetime.now().strftime('%Y-%m-%d')
-          clean_title = re.sub(r'[\/:*?"<>|]', '_', title)
-          
-          deploy_to_github(f'{clean_title}.html', html, title, date_str)
-          "
+          python cli_generate.py \
+            --title "${{ github.event.inputs.title }}" \
+            --angle "${{ github.event.inputs.angle }}" \
+            --date "${{ github.event.inputs.date }}" \
+            --style "${{ github.event.inputs.style }}"
 
       - name: Push changes
         run: |
