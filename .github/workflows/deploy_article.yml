@@ -52,22 +52,25 @@ jobs:
 
       - name: Deploy to gh-pages branch
         run: |
-          # Keep files we want to move
+          # 获取生成的文件名
           TITLE_CLEAN=$(echo "${{ github.event.inputs.title }}" | sed 's/[\/:*?"<>|]/_/g')
           FILE_NAME="${TITLE_CLEAN}.html"
           
-          # Move files to a temporary location
-          mkdir ../temp_site
-          cp "$FILE_NAME" articles.json index.html ../temp_site/
+          # 关键点：使用 mv 将文件移动到工作目录之外，并清理当前目录
+          mkdir -p ../temp_site
+          mv "$FILE_NAME" articles.json index.html ../temp_site/
           
-          # Switch to gh-pages branch
+          # 清理当前 main 分支下可能存在的冲突文件
+          git checkout .
+          
+          # 切换到 gh-pages 分支
           git fetch origin gh-pages
           git checkout gh-pages
           
-          # Bring back the generated files
+          # 将生成的文件覆盖回当前目录
           cp ../temp_site/* .
           
-          # Git commit and push to gh-pages
+          # 提交并推送
           git config --global user.name 'github-actions[bot]'
           git config --global user.email 'github-actions[bot]@users.noreply.github.io'
           git add .
