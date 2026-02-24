@@ -21,6 +21,7 @@
     <div class="container">
         <h1>微信文章存档</h1>
         <div class="controls">
+            <input type="text" id="search-box" placeholder="搜索文章标题...">
             <label>按日期筛选:</label>
             <input type="date" id="date-picker">
             <label>或选择文章:</label>
@@ -53,6 +54,7 @@
 
         function populateDropdown(articles) {
             const dropdown = document.getElementById('article-dropdown');
+            dropdown.innerHTML = '<option value="">-- 请选择 --</option>';
             articles.forEach(a => {
                 const opt = document.createElement('option');
                 opt.value = a.url;
@@ -61,11 +63,21 @@
             });
         }
 
-        document.getElementById('date-picker').addEventListener('change', (e) => {
-            const selected = e.target.value;
-            const filtered = allArticles.filter(a => a.date === selected);
+        function filterArticles() {
+            const searchTerm = document.getElementById('search-box').value.toLowerCase();
+            const selectedDate = document.getElementById('date-picker').value;
+            
+            const filtered = allArticles.filter(a => {
+                const matchesSearch = a.title.toLowerCase().includes(searchTerm);
+                const matchesDate = selectedDate ? a.date === selectedDate : true;
+                return matchesSearch && matchesDate;
+            });
+            
             renderList(filtered);
-        });
+        }
+
+        document.getElementById('search-box').addEventListener('input', filterArticles);
+        document.getElementById('date-picker').addEventListener('change', filterArticles);
 
         document.getElementById('article-dropdown').addEventListener('change', (e) => {
             if (e.target.value) window.location.href = e.target.value;
