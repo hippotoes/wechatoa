@@ -1,0 +1,75 @@
+name: Generate and Deploy Article
+
+on:
+  workflow_dispatch:
+    inputs:
+      title:
+        description: '文章标题'
+        required: true
+      angle:
+        description: '心理学概念/切入点'
+        required: true
+      style:
+        description: '提示词风格'
+        default: 'psychology'
+        required: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Generate Article
+        env:
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          WECHAT_APP_ID: ${{ secrets.WECHAT_APP_ID }}
+          WECHAT_APP_SECRET: ${{ secrets.WECHAT_APP_SECRET }}
+          WECHAT_THUMB_MEDIA_ID: ${{ secrets.WECHAT_THUMB_MEDIA_ID }}
+        run: |
+          python -c "
+          import os, json, markdown, datetime, re
+          from llm_client import DeepSeekClient
+          from main import PromptManager, deploy_to_github
+          
+          title = '${{ github.event.inputs.title }}'
+          angle = '${{ github.event.inputs.angle }}'
+          style_name = '${{ github.event.inputs.style }}'
+          
+          pm = PromptManager()
+          prompts = pm.prompts[style_name]
+          llm = DeepSeekClient(os.getenv('DEEPSEEK_API_KEY'), model='deepseek-reasoner')
+          
+          print('[1/3] Generating Outline...')
+          outline = llm.generate(prompts['Stage 2'].format(title=title, angle=angle))
+          print('[2/3] Generating Content...')
+          content = llm.generate(prompts['Stage 3'].format(outline=outline))
+          print('[3/3] Reviewing...')
+          final_md = llm.generate(prompts['Stage 4'].format(content=content))
+          
+          html = markdown.markdown(final_md, extensions=['extra'])
+          date_str = datetime.datetime.now().strftime('%Y-%m-%d')
+          clean_title = re.sub(r'[\/:*?"<>|]', '_', title)
+          
+          deploy_to_github(f'{clean_title}.html', html, title, date_str)
+          "
+
+      - name: Push changes
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.io'
+          git add docs/
+          git commit -m "Automated Article: ${{ github.event.inputs.title }}"
+          git push origin main
