@@ -1,1 +1,89 @@
-<h1>WeChat OA Archive</h1>
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>微信文章存档</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body { font-family: -apple-system, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; background: #f5f5f5; }
+        .container { background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        h1 { color: #07c160; text-align: center; }
+        .controls { display: flex; gap: 10px; margin-bottom: 20px; justify-content: center; align-items: center; flex-wrap: wrap; }
+        select, input { padding: 8px; border: 1px solid #ddd; border-radius: 4px; }
+        #article-list { list-style: none; padding: 0; }
+        #article-list li { padding: 15px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; }
+        #article-list a { text-decoration: none; color: #333; font-weight: 500; }
+        #article-list a:hover { color: #07c160; }
+        .date { color: #999; font-size: 0.9em; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>微信文章存档</h1>
+        <div class="controls">
+            <input type="text" id="search-box" placeholder="搜索文章标题...">
+            <label>按日期筛选:</label>
+            <input type="date" id="date-picker">
+            <label>或选择文章:</label>
+            <select id="article-dropdown">
+                <option value="">-- 请选择 --</option>
+            </select>
+        </div>
+        <ul id="article-list"></ul>
+    </div>
+
+    <script>
+        let allArticles = [];
+        
+        async function loadArticles() {
+            const res = await fetch('articles.json');
+            allArticles = await res.json();
+            renderList(allArticles);
+            populateDropdown(allArticles);
+        }
+
+        function renderList(articles) {
+            const list = document.getElementById('article-list');
+            list.innerHTML = articles.map(a => `
+                <li>
+                    <a href="${a.url}">${a.title}</a>
+                    <span class="date">${a.date}</span>
+                </li>
+            `).join('');
+        }
+
+        function populateDropdown(articles) {
+            const dropdown = document.getElementById('article-dropdown');
+            dropdown.innerHTML = '<option value="">-- 请选择 --</option>';
+            articles.forEach(a => {
+                const opt = document.createElement('option');
+                opt.value = a.url;
+                opt.textContent = a.title;
+                dropdown.appendChild(opt);
+            });
+        }
+
+        function filterArticles() {
+            const searchTerm = document.getElementById('search-box').value.toLowerCase();
+            const selectedDate = document.getElementById('date-picker').value;
+            
+            const filtered = allArticles.filter(a => {
+                const matchesSearch = a.title.toLowerCase().includes(searchTerm);
+                const matchesDate = selectedDate ? a.date === selectedDate : true;
+                return matchesSearch && matchesDate;
+            });
+            
+            renderList(filtered);
+        }
+
+        document.getElementById('search-box').addEventListener('input', filterArticles);
+        document.getElementById('date-picker').addEventListener('change', filterArticles);
+
+        document.getElementById('article-dropdown').addEventListener('change', (e) => {
+            if (e.target.value) window.location.href = e.target.value;
+        });
+
+        loadArticles();
+    </script>
+</body>
+</html>
