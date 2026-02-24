@@ -54,21 +54,23 @@ class PromptManager:
             sections[current_stage] = "\n".join(temp_buffer).strip()
         return sections
 
-def update_manifest(title, filename, date_str):
+def update_manifest(title, filename, date_str, keep_existing=True):
     manifest_path = "articles.json"
     articles = []
-    if os.path.exists(manifest_path):
+    if keep_existing and os.path.exists(manifest_path):
         with open(manifest_path, "r", encoding="utf-8") as f:
             articles = json.load(f)
     
-    articles.append({
-        "title": title,
-        "url": filename,
-        "date": date_str
-    })
+    # Check for duplicates
+    if not any(a['url'] == filename for a in articles):
+        articles.append({
+            "title": title,
+            "url": filename,
+            "date": date_str
+        })
     
     # Sort by date descending
-    articles.sort(key=lambda x: x['date'], reverse=True)
+    articles.sort(key=lambda x: (x['date'], x['title']), reverse=True)
     
     with open(manifest_path, "w", encoding="utf-8") as f:
         json.dump(articles, f, ensure_ascii=False, indent=2)
@@ -167,7 +169,7 @@ def generate_index_html():
     with open("index.html", "w", encoding="utf-8") as f:
         f.write(index_tpl)
 
-def deploy_to_github(filename, content_html, title, date_str):
+def deploy_to_github(filename, content_html, title, date_str, keep_existing=True):
     print("\n[Deploy] 正在准备部署文件...")
     target_path = os.path.basename(filename)
     
@@ -195,7 +197,7 @@ def deploy_to_github(filename, content_html, title, date_str):
 </body>
 </html>""")
 
-    update_manifest(title, os.path.basename(filename), date_str)
+    update_manifest(title, os.path.basename(filename), date_str, keep_existing)
     generate_index_html()
 
     try:

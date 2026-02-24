@@ -17,6 +17,10 @@ on:
         description: '提示词风格'
         default: 'psychology'
         required: true
+      keep_existing:
+        description: '保留现有文章 (Data Retention)'
+        type: boolean
+        default: true
 
 concurrency:
   group: "publishing"
@@ -31,6 +35,13 @@ jobs:
         with:
           ref: main
 
+      - name: Checkout gh-pages branch (for data retention)
+        if: ${{ github.event.inputs.keep_existing == 'true' }}
+        uses: actions/checkout@v4
+        with:
+          ref: gh-pages
+          path: existing_site
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -39,37 +50,33 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      - name: Generate Content and Prepare Files
+      - name: Prepare Workspace
+        run: |
+          mkdir site
+          if [ "${{ github.event.inputs.keep_existing }}" = "true" ]; then
+            echo "Merging existing site data..."
+            cp -r existing_site/* site/ || echo "No existing site files"
+          fi
+
+      - name: Generate Content
         env:
           DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
         run: |
-          # The script now generates files in the current root
+          # Copy scripts to site dir to run there so outputs go into site/
+          cp cli_generate.py main.py llm_client.py wechat_client.py prompts.py requirements.txt config.json site/
+          cp -r prompts site/
+          cd site
           python cli_generate.py \
             --title "${{ github.event.inputs.title }}" \
             --angle "${{ github.event.inputs.angle }}" \
             --date "${{ github.event.inputs.date }}" \
-            --style "${{ github.event.inputs.style }}"
+            --style "${{ github.event.inputs.style }}" \
+            ${{ github.event.inputs.keep_existing == 'true' && '--keep-existing' || '--no-keep' }}
 
-      - name: Deploy to gh-pages branch
-        run: |
-          # 1. 备份生成的文件
-          TITLE_CLEAN=$(echo "${{ github.event.inputs.title }}" | sed 's/[\/:*?"<>|]/_/g')
-          FILE_NAME="${TITLE_CLEAN}.html"
-          
-          mkdir -p ../temp_site
-          mv "$FILE_NAME" articles.json index.html ../temp_site/
-          
-          # 2. 强制切换到 gh-pages 分支，忽略任何本地差异
-          git fetch origin gh-pages
-          git checkout -f gh-pages
-          
-          # 3. 将新生成的文件覆盖回 gh-pages 根目录
-          cp ../temp_site/* .
-          
-          # 4. 提交并推送
-          git config --global user.name 'github-actions[bot]'
-          git config --global user.email 'github-actions[bot]@users.noreply.github.io'
-          git add .
-          git commit -m "Add article: ${{ github.event.inputs.title }}" || echo "No changes"
-          git pull --rebase origin gh-pages
-          git push origin gh-pages
+      - name: Deploy
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./site
+          publish_branch: gh-pages
+          commit_message: "deploy: ${{ github.event.inputs.date }} [${{ github.event.inputs.title }}]"

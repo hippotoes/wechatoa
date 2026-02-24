@@ -13,6 +13,8 @@ def run_generate():
     parser.add_argument("--angle", required=True)
     parser.add_argument("--date", default="")
     parser.add_argument("--style", default="psychology")
+    parser.add_argument("--keep-existing", action="store_true", default=True)
+    parser.add_argument("--no-keep", action="store_false", dest="keep_existing")
     args = parser.parse_args()
 
     pm = PromptManager()
@@ -43,7 +45,7 @@ def run_generate():
     date_str = args.date if args.date else datetime.datetime.now().strftime('%Y-%m-%d')
     clean_title = re.sub(r'[\/:*?"<>|]', '_', args.title)
     
-    deploy_to_github(f"{clean_title}.html", html, args.title, date_str)
+    deploy_to_github(f"{clean_title}.html", html, args.title, date_str, args.keep_existing)
     print(f"--- 任务完成: {args.title} ---")
 
 if __name__ == "__main__":
