@@ -9,6 +9,10 @@ on:
       angle:
         description: '心理学概念/切入点'
         required: true
+      date:
+        description: '发布日期 (YYYY-MM-DD), 留空则为今天'
+        required: false
+        default: ''
       style:
         description: '提示词风格'
         default: 'psychology'
@@ -46,6 +50,7 @@ jobs:
           
           title = '${{ github.event.inputs.title }}'
           angle = '${{ github.event.inputs.angle }}'
+          input_date = '${{ github.event.inputs.date }}'
           style_name = '${{ github.event.inputs.style }}'
           
           pm = PromptManager()
@@ -60,7 +65,7 @@ jobs:
           final_md = llm.generate(prompts['Stage 4'].format(content=content))
           
           html = markdown.markdown(final_md, extensions=['extra'])
-          date_str = datetime.datetime.now().strftime('%Y-%m-%d')
+          date_str = input_date if input_date else datetime.datetime.now().strftime('%Y-%m-%d')
           clean_title = re.sub(r'[\/:*?"<>|]', '_', title)
           
           deploy_to_github(f'{clean_title}.html', html, title, date_str)
