@@ -4,7 +4,7 @@ import markdown
 import subprocess
 import time
 from dotenv import load_dotenv
-from llm_client import GeminiClient
+from llm_client import GeminiClient, DeepSeekClient
 from wechat_client import WeChatClient
 
 load_dotenv()
@@ -94,24 +94,44 @@ def deploy_to_github(filename, content_html):
         print(f"Git 发布失败: {e}")
 
 def main():
-    # 1. 检查配置
-    api_key = os.getenv("GEMINI_API_KEY")
-    if not api_key:
-        print("--- 初始化 ---")
-        api_key = input("请输入你的 Gemini API Key: ")
-        with open(".env", "a") as f:
-            f.write(f"\nGEMINI_API_KEY={api_key}")
-        os.environ["GEMINI_API_KEY"] = api_key
+    # 1. 检查配置与选择 Provider
+    print("--- 欢迎使用微信公众号自动化流水线 ---")
+    print("请选择 AI 服务商:")
+    print("1. Google Gemini")
+    print("2. DeepSeek")
+    provider_choice = input("请输入编号 (默认 1): ") or "1"
 
-    # 模型选择
-    print("\n请选择使用的模型 (免费档建议使用 gemini-1.5-flash):")
-    models = ["gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-pro"]
-    for i, m in enumerate(models):
-        print(f"{i+1}. {m}")
-    model_choice = input("请输入编号 (默认 1): ") or "1"
-    selected_model = models[int(model_choice)-1]
+    if provider_choice == "2":
+        api_key = os.getenv("DEEPSEEK_API_KEY")
+        if not api_key:
+            api_key = input("请输入你的 DeepSeek API Key: ")
+            with open(".env", "a") as f:
+                f.write(f"\nDEEPSEEK_API_KEY={api_key}")
+            os.environ["DEEPSEEK_API_KEY"] = api_key
+        
+        print("\n请选择 DeepSeek 模型:")
+        print("1. deepseek-chat (V3)")
+        print("2. deepseek-reasoner (R1)")
+        ds_model_choice = input("请输入编号 (默认 1): ") or "1"
+        selected_model = "deepseek-chat" if ds_model_choice == "1" else "deepseek-reasoner"
+        llm = DeepSeekClient(api_key, model=selected_model)
+    else:
+        api_key = os.getenv("GEMINI_API_KEY")
+        if not api_key:
+            print("--- 初始化 Gemini ---")
+            api_key = input("请输入你的 Gemini API Key: ")
+            with open(".env", "a") as f:
+                f.write(f"\nGEMINI_API_KEY={api_key}")
+            os.environ["GEMINI_API_KEY"] = api_key
+        
+        print("\n请选择 Gemini 模型:")
+        models = ["gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-pro"]
+        for i, m in enumerate(models):
+            print(f"{i+1}. {m}")
+        model_choice = input("请输入编号 (默认 1): ") or "1"
+        selected_model = models[int(model_choice)-1]
+        llm = GeminiClient(api_key, model=selected_model)
 
-    llm = GeminiClient(api_key, model=selected_model)
     pm = PromptManager()
 
     # 2. 切换提示词
