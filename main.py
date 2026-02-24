@@ -55,7 +55,7 @@ class PromptManager:
         return sections
 
 def update_manifest(title, filename, date_str):
-    manifest_path = "docs/articles.json"
+    manifest_path = "articles.json"
     articles = []
     if os.path.exists(manifest_path):
         with open(manifest_path, "r", encoding="utf-8") as f:
@@ -164,13 +164,12 @@ def generate_index_html():
     </script>
 </body>
 </html>"""
-    with open("docs/index.html", "w", encoding="utf-8") as f:
+    with open("index.html", "w", encoding="utf-8") as f:
         f.write(index_tpl)
 
 def deploy_to_github(filename, content_html, title, date_str):
-    print("\n[Deploy] 正在发布到 GitHub Pages...")
-    os.makedirs("docs", exist_ok=True)
-    target_path = os.path.join("docs", os.path.basename(filename))
+    print("\n[Deploy] 正在准备部署文件...")
+    target_path = os.path.basename(filename)
     
     with open(target_path, "w", encoding="utf-8") as f:
         f.write(f"""<!DOCTYPE html>
@@ -200,10 +199,11 @@ def deploy_to_github(filename, content_html, title, date_str):
     generate_index_html()
 
     try:
-        subprocess.run(["git", "add", "docs/"], check=True)
+        subprocess.run(["git", "add", "."], check=True)
         subprocess.run(["git", "commit", "-m", f"Add article: {title}"], check=True)
-        subprocess.run(["git", "push", "origin", "HEAD"], check=True)
-        print(f"成功发布！")
+        # We don't push here in a local environment because it might mess up branches
+        # This will be handled by the specialized GitHub Action
+        print(f"本地文件已提交。")
     except Exception as e:
         print(f"Git 发布失败: {e}")
 

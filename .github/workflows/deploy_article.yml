@@ -10,7 +10,7 @@ on:
         description: '心理学概念/切入点'
         required: true
       date:
-        description: '发布日期 (YYYY-MM-DD), 留空则为今天'
+        description: '发布日期 (YYYY-MM-DD)'
         required: false
         default: ''
       style:
@@ -18,20 +18,18 @@ on:
         default: 'psychology'
         required: true
 
-# 核心优化：确保同一时间只有一个任务在执行推送操作
 concurrency:
   group: "publishing"
   cancel-in-progress: false
 
 jobs:
-  build:
+  generate:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout main
+      - name: Checkout main branch
         uses: actions/checkout@v4
         with:
           ref: main
-          fetch-depth: 0 # 必须拉取完整历史以支持 rebase
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -41,22 +39,38 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      - name: Generate Article
+      - name: Generate Content and Prepare Files
         env:
           DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
         run: |
+          # The script now generates files in the current root
           python cli_generate.py \
             --title "${{ github.event.inputs.title }}" \
             --angle "${{ github.event.inputs.angle }}" \
             --date "${{ github.event.inputs.date }}" \
             --style "${{ github.event.inputs.style }}"
 
-      - name: Push changes
+      - name: Deploy to gh-pages branch
         run: |
+          # Keep files we want to move
+          TITLE_CLEAN=$(echo "${{ github.event.inputs.title }}" | sed 's/[\/:*?"<>|]/_/g')
+          FILE_NAME="${TITLE_CLEAN}.html"
+          
+          # Move files to a temporary location
+          mkdir ../temp_site
+          cp "$FILE_NAME" articles.json index.html ../temp_site/
+          
+          # Switch to gh-pages branch
+          git fetch origin gh-pages
+          git checkout gh-pages
+          
+          # Bring back the generated files
+          cp ../temp_site/* .
+          
+          # Git commit and push to gh-pages
           git config --global user.name 'github-actions[bot]'
           git config --global user.email 'github-actions[bot]@users.noreply.github.io'
-          git add docs/
-          git commit -m "Automated Article: ${{ github.event.inputs.title }}" || echo "No changes to commit"
-          # 推送前拉取远程最新代码并进行变基，解决冲突
-          git pull --rebase origin main
-          git push origin main
+          git add .
+          git commit -m "Add article: ${{ github.event.inputs.title }}" || echo "No changes"
+          git pull --rebase origin gh-pages
+          git push origin gh-pages
